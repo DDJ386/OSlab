@@ -64,7 +64,6 @@ void rearrange(int algorithm) {
   }
 }
 
-/* 2023.10.16 优化, 将排序改为使用C语言的qsort()函数 */
 static int comp_FF(const void *a, const void *b) {
   if ((*(struct free_block_type **)a)->start_addr <
       (*(struct free_block_type **)b)->start_addr)
@@ -99,40 +98,35 @@ static int comp_WF(const void *a, const void *b) {
     return 1;
 }
 
+static int fill_in_array(struct free_block_type **blocks) {
+  int block_count = 0;
+  struct free_block_type *index = free_block;
+  for (; index != NULL; index = index->next) {
+    blocks[block_count++] = index;
+  }
+  return block_count;
+}
+
+static void rearrange_list(struct free_block_type **blocks, int block_count) {
+  for (int i = 0; i < block_count - 1; i++) {
+    blocks[i]->next = blocks[i + 1];
+  }
+  blocks[block_count - 1]->next = NULL;
+  free_block = blocks[0];
+}
+
 void rearrange_FF() {
   // 按start_addr从低到高排序
   // 简便起见, 采用选择排序, 可优化为其他更快的排序方式
   // 为尽可能贴近裸机实现,不调用malloc进行动态分配,
   // 因此提前开一个足够大的指针数组
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
-  int block_count = 0;
   // 将链表装进指针数组中
-  struct free_block_type *index = free_block;
-  for (; index != NULL; index = index->next) {
-    blocks[block_count++] = index;
-  }
+  int block_count = fill_in_array(block_count);
   // 接下来进行排序
-  // for (int i = 0; i < block_count; i++) {
-  //   int sort_flag = 0;
-  //   int minimum_addr = blocks[i]->start_addr;
-  //   int min_index = i;
-  //   for (int j = i + 1; j < block_count; j++) {
-  //     if (blocks[j]->start_addr < minimum_addr) {
-  //       sort_flag = 1;
-  //       minimum_addr = blocks[j]->start_addr;
-  //       min_index = j;
-  //     }
-  //   }
-  //   if (!sort_flag) break;
-  //   struct free_block_type *temp = blocks[i];
-  //   blocks[i] = blocks[min_index];
-  //   blocks[min_index] = temp;
-  // }
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_FF);
   // 排好序后将数组顺序作为链表顺序重排链表
-  for (int i = 0; i < block_count - 1; i++) {
-    blocks[i]->next = blocks[i + 1];
-  }
+  rearrange_list(blocks, block_count);
   blocks[block_count - 1]->next = NULL;
   free_block = blocks[0];
 }
@@ -141,18 +135,9 @@ void rearrange_BF() {
   // 按size从小到大排序
   // 思路与FF算法一致
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
-  int block_count = 0;
-  // 将链表装进指针数组中
-  struct free_block_type *index = free_block;
-  for (; index != NULL; index = index->next) {
-    blocks[block_count++] = index;
-  }
-  // 接下来进行排序
+  int block_count = fill_in_array(block_count);
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_BF);
-  // 排好序后将数组顺序作为链表顺序重排链表
-  for (int i = 0; i < block_count - 1; i++) {
-    blocks[i]->next = blocks[i + 1];
-  }
+  rearrange_list(blocks, block_count);
   blocks[block_count - 1]->next = NULL;
   free_block = blocks[0];
 }
@@ -161,18 +146,9 @@ void rearrange_WF() {
   // 按size从大到小排序
   // 思路与FF算法一致
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
-  int block_count = 0;
-  // 将链表装进指针数组中
-  struct free_block_type *index = free_block;
-  for (; index != NULL; index = index->next) {
-    blocks[block_count++] = index;
-  }
-  // 接下来进行排序
+  int block_count = fill_in_array(block_count);
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_WF);
-  // 排好序后将数组顺序作为链表顺序重排链表
-  for (int i = 0; i < block_count - 1; i++) {
-    blocks[i]->next = blocks[i + 1];
-  }
+  rearrange_list(blocks, block_count);
   blocks[block_count - 1]->next = NULL;
   free_block = blocks[0];
 }
