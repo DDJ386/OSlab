@@ -65,11 +65,66 @@ void rearrange(int algorithm) {
 }
 
 void rearrange_FF() {
-  // 请自行补充
+  // 按start_addr从低到高重排
+  // 简便起见, 采用冒泡排序, 可优化为其他更快的排序方式
+  // 为尽可能贴近裸机实现,不调用malloc进行动态分配, 因此提前开一个足够大的指针数组
+  struct free_block_type *blocks[DEFAULT_MEM_SIZE/MIN_SLICE];
+  int block_count = 0;
+  // 将链表装进指针数组中
+  struct free_block_type *index = free_block;
+  for( ; index != NULL; index = index->next) {
+    blocks[block_count++] = index;
+  }
+  // 接下来进行排序
+  for(int i = 0; i < block_count; i++) {
+    int minimum_addr = blocks[i]->start_addr;
+    int min_index = i;
+    for(int j = i + 1; j < block_count; j++) {
+      if(blocks[j]->start_addr < minimum_addr) {
+        minimum_addr = blocks[j]->start_addr;
+        min_index = j;
+      }
+    }
+    struct free_block_type *temp = blocks[i];
+    blocks[i] = blocks[min_index];
+    blocks[min_index] = temp;
+  }
+  // 排好序后将数组顺序作为链表顺序重排链表
+  for(int i = 0; i < block_count - 1; i++) {
+    blocks[i]->next = blocks[i + 1];
+  }
+  blocks[block_count - 2]->next = NULL;
 }
 
 void rearrange_BF() {
-  // 请自行补充
+  // 按size从小到大排序
+  // 思路与FF算法一致
+  struct free_block_type *blocks[DEFAULT_MEM_SIZE/MIN_SLICE];
+  int block_count = 0;
+  struct free_block_type *index = free_block;
+  // 将链表装进指针数组中
+  for( ; index != NULL; index = index->next) {
+    blocks[block_count++] = index;
+  }
+  // 接下来进行排序
+  for(int i = 0; i < block_count; i++) {
+    int minimum_addr = blocks[i]->start_addr;
+    int min_index = i;
+    for(int j = i + 1; j < block_count; j++) {
+      if(blocks[j]->start_addr < minimum_addr) {
+        minimum_addr = blocks[j]->start_addr;
+        min_index = j;
+      }
+    }
+    struct free_block_type *temp = blocks[i];
+    blocks[i] = blocks[min_index];
+    blocks[min_index] = temp;
+  }
+  // 排好序后将数组顺序作为链表顺序重排链表
+  for(int i = 0; i < block_count - 1; i++) {
+    blocks[i]->next = blocks[i + 1];
+  }
+  blocks[block_count - 2]->next = NULL;
 }
 
 void rearrange_WF() {
@@ -165,7 +220,7 @@ int dispose(struct allocated_block *free_ab) {
   free(ab);
   return 2;
 }
-/* 显示当前内存的使用情况，包括空闲区的情况和已经分配的情况 */
+
 int display_mem_usage() {
   struct free_block_type *fbt = free_block;
   struct allocated_block *ab = allocated_block_head;

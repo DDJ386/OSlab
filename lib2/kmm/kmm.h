@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <malloc.h>
 
 #define PROCESS_NAME_LEN 32   /*进程名长度*/
 #define MIN_SLICE 10          /*最小碎片的大小*/
