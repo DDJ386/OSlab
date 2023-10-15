@@ -122,7 +122,7 @@ void rearrange_FF() {
   // 因此提前开一个足够大的指针数组
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
   // 将链表装进指针数组中
-  int block_count = fill_in_array(block_count);
+  int block_count = fill_in_array(blocks);
   // 接下来进行排序
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_FF);
   // 排好序后将数组顺序作为链表顺序重排链表
@@ -135,7 +135,7 @@ void rearrange_BF() {
   // 按size从小到大排序
   // 思路与FF算法一致
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
-  int block_count = fill_in_array(block_count);
+  int block_count = fill_in_array(blocks);
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_BF);
   rearrange_list(blocks, block_count);
   blocks[block_count - 1]->next = NULL;
@@ -146,7 +146,7 @@ void rearrange_WF() {
   // 按size从大到小排序
   // 思路与FF算法一致
   struct free_block_type *blocks[DEFAULT_MEM_SIZE / MIN_SLICE];
-  int block_count = fill_in_array(block_count);
+  int block_count = fill_in_array(blocks);
   qsort(blocks, block_count, sizeof(struct free_block_type *), comp_WF);
   rearrange_list(blocks, block_count);
   blocks[block_count - 1]->next = NULL;
