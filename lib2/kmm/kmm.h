@@ -19,7 +19,6 @@ struct free_block_type {
   struct free_block_type *next;
 };
 
-
 /* 已分配块结构 */
 struct allocated_block {
   int pid;
@@ -28,7 +27,6 @@ struct allocated_block {
   char process_name[PROCESS_NAME_LEN];
   struct allocated_block *next;
 };
-
 
 /*初始化空闲块，默认为一块，可以指定大小及起始地址*/
 struct free_block_type *init_free_block(int mem_size);
