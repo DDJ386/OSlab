@@ -2,6 +2,7 @@
   "files.associations": {
     "unistd.h": "c",
     "kmm.h": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "malloc.h": "c"
   }
 }

@@ -1,5 +1,16 @@
 #include "kmm.h"
 
+int mem_size = DEFAULT_MEM_SIZE; /*内存大小*/
+int ma_algorithm = MA_FF;        /*当前分配算法*/
+static int pid = 0;              /*初始 pid*/
+int flag = 0;                    /*设置内存大小标志*/
+
+/* 指向空闲块链表表头的指针 */
+struct free_block_type *free_block;
+
+/* 指向已分配块链表表头的指针 */
+struct allocated_block *allocated_block_head = NULL;
+
 struct free_block_type *init_free_block(int mem_size) {
   struct free_block_type *fb;
   fb = (struct free_block_type *)malloc(sizeof(struct free_block_type));
@@ -10,6 +21,7 @@ struct free_block_type *init_free_block(int mem_size) {
   fb->size = mem_size;
   fb->start_addr = DEFAULT_MEM_START;
   fb->next = NULL;
+  free_block = fb;
   return fb;
 }
 
@@ -23,7 +35,7 @@ void display_menu() {
   printf("0 - Exit\n");
 }
 
-void set_mem_size() {
+int set_mem_size() {
   int size;
   if (flag != 0) {  // 防止重复设置
     printf("Cannot set memory size again\n");
@@ -48,14 +60,15 @@ void set_algorithm() {
   if (algorithm >= 1 && algorithm <= 3) ma_algorithm = algorithm;
   // 按指定算法重新排列空闲区链表
   rearrange(ma_algorithm);
+  flag = 1;
 }
 
 static int comp_FF(const void *a, const void *b) {
   if ((*(struct free_block_type **)a)->start_addr <
       (*(struct free_block_type **)b)->start_addr)
     return -1;
-  if ((*(struct free_block_type **)a)->start_addr =
-          (*(struct free_block_type **)b)->start_addr)
+  if ((*(struct free_block_type **)a)->start_addr ==
+      (*(struct free_block_type **)b)->start_addr)
     return 0;
   if ((*(struct free_block_type **)a)->start_addr >
       (*(struct free_block_type **)b)->start_addr)
@@ -65,8 +78,8 @@ static int comp_BF(const void *a, const void *b) {
   if ((*(struct free_block_type **)a)->size <
       (*(struct free_block_type **)b)->size)
     return -1;
-  if ((*(struct free_block_type **)a)->size =
-          (*(struct free_block_type **)b)->size)
+  if ((*(struct free_block_type **)a)->size ==
+      (*(struct free_block_type **)b)->size)
     return 0;
   if ((*(struct free_block_type **)a)->size >
       (*(struct free_block_type **)b)->size)
@@ -76,8 +89,8 @@ static int comp_WF(const void *a, const void *b) {
   if ((*(struct free_block_type **)a)->size >
       (*(struct free_block_type **)b)->size)
     return -1;
-  if ((*(struct free_block_type **)a)->size =
-          (*(struct free_block_type **)b)->size)
+  if ((*(struct free_block_type **)a)->size ==
+      (*(struct free_block_type **)b)->size)
     return 0;
   if ((*(struct free_block_type **)a)->size <
       (*(struct free_block_type **)b)->size)
@@ -117,6 +130,7 @@ void rearrange(int algorithm) {
 }
 
 int new_process() {
+  flag = 1;
   struct allocated_block *ab;
   int size;
   int ret;
@@ -155,11 +169,41 @@ int allocate_mem(struct allocated_block *ab) {
   // 根据当前算法在空闲分区链表中搜索合适空闲分区进行分配，分配时注意以下情况：
   //  1. 找到可满足空闲分区且分配后剩余空间足够大，则分割
   //  2. 找到可满足空闲分区且但分配后剩余空间比较小，则一起分配
-  //  3.
-  //  找不可满足需要的空闲分区但空闲分区之和能满足需要，则采用内存紧缩技术，进行空闲分区的合并，然后再分配
-  // 4. 在成功分配内存后，应保持空闲分区按照相应算法有序
-  // 5. 分配成功则返回 1，否则返回-1
-  // 请自行补充。。。。。
+  //  3. 找不到可满足的空闲分区, 但根据free的实现, 空闲队列时刻保持最优状态,
+  //      因此直接返回-1
+  //  4. 在成功分配内存后，应保持空闲分区按照相应算法有序
+  //  5. 分配成功则返回 1，否则返回-1
+  if (fbt->size < request_size) {
+    fbt = fbt->next;
+    while (fbt != NULL && fbt->size < request_size) {
+      pre = fbt;
+      fbt = fbt->next;
+    }
+  }
+  if (fbt == NULL) {
+    return -1;
+  }
+  ab->start_addr = fbt->start_addr;
+  if ((fbt->size - request_size) > MIN_SLICE) {
+    // 分割
+    fbt->size -= request_size;
+    fbt->start_addr += request_size;
+  } else {
+    pre->next = fbt->next;
+    free(fbt);
+  }
+  rearrange(ma_algorithm);
+  return 1;
+}
+
+struct allocated_block *find_process(int pid) {
+  struct allocated_block *ab = allocated_block_head;
+  while (ab != NULL) {
+    if (ab->pid == pid) {
+      return ab;
+    }
+    ab = ab->next;
+  }
 }
 
 void kill_process() {
@@ -172,19 +216,32 @@ void kill_process() {
     free_mem(ab); /*释放 ab 所表示的分配区*/
     dispose(ab);  /*释放 ab 数据结构节点*/
   }
+  flag = 1;
 }
 
 int free_mem(struct allocated_block *ab) {
   int algorithm = ma_algorithm;
-  struct free_block_type *fbt, *pre, *work;
+  struct free_block_type *fbt;
   fbt = (struct free_block_type *)malloc(sizeof(struct free_block_type));
   if (!fbt) return -1;
-  // 进行可能的合并，基本策略如下
-  // 1. 将新释放的结点插入到空闲分区队列末尾
-  // 2. 对空闲链表按照地址有序排列
-  // 3. 检查并合并相邻的空闲分区
-  // 4. 将空闲链表重新按照当前算法排序
-  // 请自行补充……
+  // 将结点插入链表并进行合并操作, 完成后按照当前算法进行排序
+  fbt->size = ab->size;
+  fbt->start_addr = ab->start_addr;
+  fbt->next = free_block;
+  free_block = fbt;
+  rearrange(MA_FF);
+  fbt = free_block;
+  while (fbt->next != NULL) {
+    if (fbt->start_addr + fbt->size == fbt->next->start_addr) {
+      fbt->size += fbt->next->size;
+      struct free_block_type *next = fbt->next;
+      fbt->next = next->next;
+      free(next);
+    } else {
+      fbt = fbt->next;
+    }
+  }
+  rearrange(ma_algorithm);
   return 1;
 }
 
@@ -207,6 +264,7 @@ int dispose(struct allocated_block *free_ab) {
 }
 
 int display_mem_usage() {
+  flag = 1;
   struct free_block_type *fbt = free_block;
   struct allocated_block *ab = allocated_block_head;
   if (fbt == NULL) return (-1);
@@ -228,4 +286,17 @@ int display_mem_usage() {
   }
   printf("----------------------------------------------------------\n");
   return 0;
+}
+
+void do_exit() {
+  while (free_block != NULL) {
+    struct free_block_type *next = free_block->next;
+    free(free_block);
+    free_block = next;
+  }
+  while (allocated_block_head != NULL) {
+    struct allocated_block *next = allocated_block_head->next;
+    free(allocated_block_head);
+    allocated_block_head = next;
+  }
 }
