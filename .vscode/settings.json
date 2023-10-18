@@ -3,6 +3,10 @@
     "unistd.h": "c",
     "kmm.h": "c",
     "stdlib.h": "c",
-    "malloc.h": "c"
+    "malloc.h": "c",
+    "wait.h": "c",
+    "stdio.h": "c",
+    "signal.h": "c",
+    "sigset_t.h": "c"
   }
 }
