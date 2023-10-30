@@ -6,28 +6,32 @@
 /* 页面大小 */
 #define PAGE_SIZE 4096
 /* 页面置换算法 */
-#define FIFO 0
-#define LRU  1
+#define FIFO 1
+#define LRU  2
 
 int total_cnt = 0;
 int access_cnt = 0;
 int miss_cnt = 0;
 int algorithm = 0;
-page_info *memory[MEMORY_SIZE];
+page_info *memory[MEMORY_SIZE] = {0};
 
 
-inline bool match_page(int process, uint64_t addr, page_info *page) {
+bool match_page(int process, uint64_t addr, page_info *page) {
+  if(page == NULL){
+    return false;
+  }
   return ((process == page->process && addr > page->start_addr &&
            addr < (page->start_addr + PAGE_SIZE))
-              ? 1
-              : 0);
+              ? true
+              : false);
 }
 
 page_info *create_page(uint64_t addr, int process) {
+  static unsigned int page_time = 0;
   page_info *new_page = (page_info *)malloc(sizeof(page_info));
   new_page->start_addr = (addr & (-1 << 12)); /* 页面对齐 */
   new_page->process = process;
-  new_page->time_scale = time(NULL);
+  new_page->time_scale = page_time++;
   return new_page;
 }
 
@@ -39,9 +43,12 @@ int replace_FIFO(){
 }
 
 int replace_LRU() {
-  time_t min_time = memory[0]->time_scale;
+  unsigned int min_time = (unsigned int)-1;
   int retval = 0;
-  for(int i = 1; i < MEMORY_SIZE; i++) {
+  for(int i = 0; i < MEMORY_SIZE; i++) {
+    if(memory[i] == NULL){
+      return i;
+    }
     if(memory[i]->time_scale < min_time) {
       min_time = memory[i]->time_scale;
       retval = i;
@@ -65,13 +72,13 @@ int access(int process, uint64_t addr) {
   for(int i = 0; i < MEMORY_SIZE; i++) {
     if(match_page(process, addr, memory[i])){
       access_cnt++;
-      return;
+      return 1;
     }
   }
   /* 内存中无匹配页面, 需要创建新页面并进行页面的置换 */
   miss_cnt++;
   int rep_index = replace(algorithm);
-  free(memory[rep_index]);
+  printf("%d\n",rep_index);
   page_info *new_page = create_page(addr, process);
   memory[rep_index] = new_page;
   return 0;
@@ -79,4 +86,9 @@ int access(int process, uint64_t addr) {
 
 void set_algorithm(int new_algorithm) {
   algorithm = new_algorithm;
+}
+
+void summarize() {
+  printf("total: %d\nsuccess: %d\nfaild: %d\n",total_cnt, access_cnt,miss_cnt);
+  printf("miss rate %lf\n",(double)miss_cnt/(double)total_cnt);
 }
