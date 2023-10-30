@@ -15,12 +15,13 @@ int main() {
         pid1 = getpid();
         printf("child: pid = %d", pid);
         printf("child: pid1 = %d",pid1);
+        sleep(2);
+        printf("after father terminated ppid: %d ",getppid());
     }
     else {
         pid1 = getpid();
         printf("parent: pid = %d", pid);
         printf("parent: pid1 = %d",pid1);
-        wait(NULL);
     }
     return 0;
 }
