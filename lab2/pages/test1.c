@@ -7,9 +7,9 @@ void rand_input(int process_max) {
     int process = (int)(rand() % process_max);
     uint64_t address = (uint64_t)rand() % (1024 * 100);
     if (access(process, address)) {
-      printf("process%d access %lu success\n", process, address);
+      // printf("process%d access %lu success\n", process, address);
     } else {
-      printf("process%d access %lu faild\n", process, address);
+      // printf("process%d access %lu faild\n", process, address);
     }
   }
 }
@@ -23,9 +23,9 @@ void man_input(int process_max) {
     scanf("%d %lu", &process, &address);
     if (process == -1) return;
     if (access(process, address)) {
-      printf("process%d access %lu success\n", process, address);
+      // printf("process%d access %lu success\n", process, address);
     } else {
-      printf("process%d access %lu faild\n", process, address);
+      // printf("process%d access %lu faild\n", process, address);
     }
   }
 }

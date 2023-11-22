@@ -1,3 +1,5 @@
+all: test1 test2
+
 test1: test1.o pages.o 
 	gcc -o test1 test1.o pages.o
 

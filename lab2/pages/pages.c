@@ -2,9 +2,10 @@
 
 /* 因为只是模拟页面调度算法, 实际并不向页面中存储信息,
  * 因此以能装下的页面总数来描述内存大小 */
-#define MEMORY_SIZE 10
+#define MEMORY_SIZE 64
+
 /* 页面大小 */
-#define PAGE_SIZE 512
+#define PAGE_SIZE 1024
 /* 页面置换算法 */
 #define FIFO 1
 #define LRU 2
@@ -21,7 +22,7 @@ static bool match_page(int process, uint64_t addr, page_info *page) {
   if (page == NULL) {
     return false;
   }
-  return ((process == page->process && addr > page->start_addr &&
+  return ((process == page->process && addr >= page->start_addr &&
            addr < (page->start_addr + PAGE_SIZE))
               ? true
               : false);
@@ -29,7 +30,7 @@ static bool match_page(int process, uint64_t addr, page_info *page) {
 
 static page_info *create_page(uint64_t addr, int process) {
   page_info *new_page = (page_info *)malloc(sizeof(page_info));
-  new_page->start_addr = (addr & (~(MEMORY_SIZE - 1))); /* 页面对齐 */
+  new_page->start_addr = (addr & (~(PAGE_SIZE - 1))); /* 页面对齐 */
   new_page->process = process;
   new_page->time_scale = page_time++;
   return new_page;
@@ -80,7 +81,8 @@ int access(int process, uint64_t addr) {
   /* 内存中无匹配页面, 需要创建新页面并进行页面的置换 */
   miss_cnt++;
   int rep_index = replace(algorithm);
-  printf("replace page %d\n",rep_index);
+  // printf("replace page %d\n",rep_index);
+  free(memory[rep_index]);
   page_info *new_page = create_page(addr, process);
   memory[rep_index] = new_page;
   return 0;
@@ -91,5 +93,5 @@ void set_algorithm(int new_algorithm) { algorithm = new_algorithm; }
 void summarize() {
   printf("total: %d\nsuccess: %d\nfaild: %d\n", total_cnt, access_cnt,
          miss_cnt);
-  printf("miss rate %lf\n", (double)miss_cnt / (double)total_cnt);
+  printf("miss rate %.10lf\n", (double)miss_cnt / (double)total_cnt);
 }
